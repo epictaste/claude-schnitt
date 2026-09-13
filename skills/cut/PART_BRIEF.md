@@ -10,11 +10,15 @@ You are building part **`<part>`** of the animation zone for `<slug>`.
 **Canvas:** `<width>` x `<height>` px, 30 fps.
 **File:** `src/parts/part-<part>.tsx` in `<project-path>`.
 **Exports:** `export const <Name>Part: React.FC` and `export const <Name>Cues: Cue[]`.
-**Length:** `PARTS.<part>` frames. Frame 0 is the start of the part, not of the video.
+**Length:** `<length>` frames, which is `WORDS.<part>.durationFrames`. Frame 0 is
+the start of the part, not of the video.
+**Where it sits:** version `<version>`, starting at absolute frame `<part-start>`.
+Add that to any frame inside the part to get a still frame number.
 
 Touch only this one file. Import the blocks from `../blocks`, do not copy them.
 `src/timing.ts`, `src/blocks.tsx`, `src/Top.tsx`, and `src/sfx.tsx` belong to
-someone else.
+someone else. Your part may appear in several versions at different offsets, so
+never reach for an absolute frame inside your file.
 
 ## What is spoken in this part
 
@@ -75,7 +79,7 @@ npx tsc --noEmit
 npx remotion still Top-V<version> out/<part>-f<N>.png --frame=<N>
 ```
 
-`<N>` is an **absolute** frame in the composition: `START.<part>` plus the frame
+`<N>` is an **absolute** frame in the composition: `<part-start>` plus the frame
 inside the part. Render at least four stills and **Read every one of them**:
 
 - the first frame of the part

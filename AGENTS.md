@@ -17,9 +17,9 @@ stdlib and orchestrates `ffmpeg`, `ffprobe`, Remotion, and the Deepgram API.
   ffmpeg-synthesized UI sounds), `build.py` (render, composite, contact sheet),
   `config.py` (shared config plus the ffmpeg and ffprobe wrappers).
 - `skills/cut/template/` — the Remotion project that gets copied next to the
-  user's video. `src/timing.ts` holds zone, parts, word timings, and versions;
-  `src/blocks.tsx` holds the shared visual blocks; `src/parts/` holds one file
-  per part.
+  user's video. `src/timing.ts` holds the zone, the word timings, and one layout
+  per version; `src/blocks.tsx` holds the shared visual blocks; `src/parts/`
+  holds one file per part.
 - `skills/cut/PART_BRIEF.md` — the briefing handed to a sub-agent that builds one
   part.
 - `hooks/` — Claude Code SessionStart status hook.
@@ -66,3 +66,12 @@ cd skills/cut/template && npx remotion still Top-V1 /tmp/cut-still.png --frame=1
   SIGPIPE mid-render.
 - A project keeps its own `public/` directory. Pointing a render at a large
   shared one copies it on every single run.
+- **Versions do not share a timeline.** Each one has its own layout in
+  `VERSIONS`, and `versionLayout()` derives the start frames from it. Do not
+  reintroduce a global `PARTS`/`START`: it makes hooks of different lengths
+  impossible, which is the main thing this skill is for.
+- **`cut.py` is the only source of the `VERSIONS` block.** `words.py` writes
+  `words.json` and says nothing about layout. Two scripts printing the same
+  truth is how a project ends up a few frames out.
+- Frame counts that disagree are an error, never a warning. `shortest=1` hides a
+  mismatch behind a video that merely looks slightly wrong.

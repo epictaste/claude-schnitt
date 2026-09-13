@@ -237,3 +237,72 @@ def has_audio(video: Path) -> bool:
 def write_json(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(_json.dumps(payload, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def frame_rate(video: Path) -> dict:
+    """Frame rate of a video, both the nominal and the average one.
+
+    `r_frame_rate` is the rate the container declares, `avg_frame_rate` is the
+    frames divided by the duration. They drift apart on variable frame rate
+    recordings, which is exactly the case that silently breaks frame math.
+    """
+    parts = probe_stream(video, "stream=r_frame_rate,avg_frame_rate")
+    values: list[float] = []
+    for part in parts[:2]:
+        if "/" in part:
+            numerator, _, denominator = part.partition("/")
+            try:
+                num, den = float(numerator), float(denominator)
+            except ValueError:
+                continue
+            values.append(num / den if den else 0.0)
+        else:
+            try:
+                values.append(float(part))
+            except ValueError:
+                continue
+    if not values:
+        raise MediaError(f"ffprobe returned no frame rate for {Path(video).name}")
+    nominal = values[0]
+    average = values[1] if len(values) > 1 and values[1] > 0 else nominal
+    return {
+        "nominal": round(nominal, 4),
+        "average": round(average, 4),
+        # A container that says 30 but averages 27 is variable frame rate, and
+        # every frame number derived from a timestamp would be off.
+        "variable": abs(nominal - average) > max(0.05, nominal * 0.005),
+    }
+
+
+NORMALIZE_HINT = (
+    "ffmpeg -i {input} -r {fps} -vsync cfr -c:v libx264 -crf 17 -preset medium "
+    "-pix_fmt yuv420p -c:a aac -b:a 192k {output}"
+)
+
+
+def require_supported_frame_rate(video: Path, fps: int = FPS) -> dict:
+    """Fail unless the video is constant `fps`.
+
+    Everything in this skill is counted in frames at one rate: cut segments,
+    word frames, Remotion compositions. A 60 fps or variable clip does not
+    produce a warning further down, it produces animation that drifts, so this
+    stops at the door.
+    """
+    rate = frame_rate(video)
+    path = Path(video)
+    suggestion = NORMALIZE_HINT.format(
+        input=f'"{path}"', fps=fps, output=f'"{path.with_name(path.stem + f"-{fps}fps.mp4")}"'
+    )
+    if abs(rate["nominal"] - fps) > 0.01:
+        raise MediaError(
+            f"{path.name} runs at {rate['nominal']:g} fps, this skill works in {fps} fps frames.\n"
+            f"       Convert it first:\n       {suggestion}"
+        )
+    if rate["variable"]:
+        raise MediaError(
+            f"{path.name} has a variable frame rate "
+            f"(declared {rate['nominal']:g}, average {rate['average']:g}). "
+            "Frame numbers would not line up.\n"
+            f"       Convert it to constant {fps} fps first:\n       {suggestion}"
+        )
+    return rate

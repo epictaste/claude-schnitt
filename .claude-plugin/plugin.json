@@ -1,6 +1,6 @@
 {
   "name": "cut",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Let Claude edit your talking-head video. Measures the free zone above the speaker, gets word-level timestamps from Deepgram, cuts frame-exact hook versions with ffmpeg, builds a word-synced animation zone with Remotion, and renders finished MP4s.",
   "author": {
     "name": "Georg Kinzel",

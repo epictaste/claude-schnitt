@@ -2,46 +2,100 @@
 //
 // Fill this in from the script output:
 //   zone.py  -> ZONE
-//   words.py -> words.json, PARTS, START
+//   words.py -> words.json
 //   cut.py   -> VERSIONS
 //
-// The placeholder values below belong to the example part and exist so the
+// The placeholder values below belong to the example parts and exist so the
 // template compiles and renders before you have touched anything.
 import words from './words.json';
 
 /** Size of the animation zone. Width is the video width, height comes from zone.py. */
 export const ZONE = {width: 1080, height: 855} as const;
 
+/**
+ * Frames per second. The scripts refuse any take that is not constant 30 fps,
+ * so this is a constant, not a setting.
+ */
 export const FPS = 30;
 
-/** Length of each part in frames. Parts run back to back and cover the whole cut. */
-export const PARTS = {
-	hook: 90,
-	example: 180,
-} as const;
-
-/** Absolute start frame of each part inside the cut (the running sum of PARTS). */
-export const START = {
-	hook: 0,
-	example: 90,
-} as const;
-
-/**
- * One entry per cut version. `cut` is the file name inside public/, used by the
- * Check composition and by build.py.
- */
-export const VERSIONS = {
-	1: {durationInFrames: 270, cut: 'cut.mp4'},
-} as const;
-
-/** Set to true once sfx.py has written public/sfx/*.wav. */
-export const SFX_READY = false;
-
-export type PartName = keyof typeof PARTS;
+export type PartName = keyof typeof words;
 export type Word = {word: string; frame: number; frameEnd: number};
 
 /** Word level timestamps per part, frames relative to the start of the part. */
 export const WORDS = words as Record<PartName, {durationFrames: number; words: Word[]}>;
+
+/** One part inside a version: which part, and how many frames it runs. */
+export type LayoutEntry = {part: PartName; frames: number};
+
+export type Version = {cut: string; layout: readonly LayoutEntry[]};
+
+/**
+ * One entry per cut version, straight out of cut.py.
+ *
+ * `cut` is the file name inside public/. `layout` lists the parts of that
+ * version in order, so versions can differ in structure and not just in
+ * content: a shorter hook, an extra beat, a part left out.
+ *
+ *   2: {cut: 'v2.mp4', layout: [{part: 'hookB', frames: 135}, {part: 'body', frames: 230}]},
+ */
+export const VERSIONS: Record<number, Version> = {
+	1: {
+		cut: 'cut.mp4',
+		layout: [
+			{part: 'hook', frames: 90},
+			{part: 'example', frames: 180},
+		],
+	},
+};
+
+/** Set to true once sfx.py has written public/sfx/*.wav. */
+export const SFX_READY = false;
+
+/** A part placed on the timeline of one version. */
+export type PlacedPart = {part: PartName; from: number; frames: number};
+
+/**
+ * The parts of a version with their start frames, as a running sum.
+ *
+ * Also where a drifting project gets caught: a part length that does not match
+ * `words.json` throws here, instead of silently shifting every animation after
+ * it by a few frames.
+ */
+export const versionLayout = (version: number): PlacedPart[] => {
+	const entry = VERSIONS[version];
+	if (!entry) {
+		throw new Error(`version ${version} is not in VERSIONS`);
+	}
+	let from = 0;
+	return entry.layout.map((item) => {
+		const known = WORDS[item.part];
+		if (!known) {
+			throw new Error(`part "${item.part}" of version ${version} is not in words.json`);
+		}
+		if (known.durationFrames !== item.frames) {
+			throw new Error(
+				`part "${item.part}" is ${item.frames} frames in VERSIONS but ${known.durationFrames} ` +
+					`in words.json. Re-run words.py and cut.py with the same ranges.`,
+			);
+		}
+		const placed: PlacedPart = {part: item.part, from, frames: item.frames};
+		from += item.frames;
+		return placed;
+	});
+};
+
+/** Total length of a version, which has to match the frame count of its cut. */
+export const versionDuration = (version: number): number =>
+	versionLayout(version).reduce((total, placed) => total + placed.frames, 0);
+
+/** Start frame of a part inside a version, for rendering stills at absolute frames. */
+export const partStart = (version: number, part: PartName): number => {
+	const placed = versionLayout(version).find((item) => item.part === part);
+	if (!placed) {
+		throw new Error(`part "${part}" is not in version ${version}`);
+	}
+	return placed.from;
+};
 
 /**
  * The frame a word is spoken on, inside its part.

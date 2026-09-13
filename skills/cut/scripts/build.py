@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -30,15 +31,58 @@ if str(SCRIPT_DIR) not in sys.path:
 import config  # noqa: E402
 import sfx as sfx_module  # noqa: E402
 
-VERSION_PATTERN = re.compile(
-    r"(\d+)\s*:\s*\{[^}]*?durationInFrames\s*:\s*(\d+)[^}]*?cut\s*:\s*['\"]([^'\"]+)['\"]"
-)
+CUT_PATTERN = re.compile(r"cut\s*:\s*['\"]([^'\"]+)['\"]")
+FRAMES_PATTERN = re.compile(r"frames\s*:\s*(\d+)")
 
 CONTACT_FRAMES = 7
 
 
+def parse_versions(text: str) -> dict[int, dict]:
+    """Read the `VERSIONS` block of a timing.ts into {version: {cut, frames}}.
+
+    Walks the braces instead of matching one big pattern, because a version
+    entry now contains a nested layout array. `frames` is the sum of the layout,
+    which is what the cut of that version has to be.
+    """
+    # Match the declaration, not the first mention: the file header talks about
+    # VERSIONS in a comment, and searching for the bare word lands there.
+    declaration = re.search(r"export\s+const\s+VERSIONS\b", text)
+    if not declaration:
+        return {}
+    start = text.find("{", declaration.end())
+    if start == -1:
+        return {}
+
+    versions: dict[int, dict] = {}
+    depth = 0
+    entry_start = None
+    number: int | None = None
+    for index in range(start, len(text)):
+        char = text[index]
+        if char == "{":
+            depth += 1
+            if depth == 2:
+                entry_start = index
+                head = text[:index]
+                match = re.search(r"(\d+)\s*:\s*$", head)
+                number = int(match.group(1)) if match else None
+        elif char == "}":
+            depth -= 1
+            if depth == 1 and entry_start is not None:
+                body = text[entry_start : index + 1]
+                cut_match = CUT_PATTERN.search(body)
+                frames = [int(value) for value in FRAMES_PATTERN.findall(body)]
+                if number is not None and cut_match:
+                    versions[number] = {"cut": cut_match.group(1), "frames": sum(frames)}
+                entry_start = None
+                number = None
+            elif depth == 0:
+                break
+    return versions
+
+
 def read_version(project: Path, version: int) -> tuple[int | None, str]:
-    """Get (durationInFrames, cut file) for a version out of src/timing.ts.
+    """Get (total frames, cut file) for a version out of src/timing.ts.
 
     Falls back to (None, "cut.mp4") when timing.ts cannot be parsed, so a
     renamed or reformatted file degrades into a warning rather than a crash.
@@ -50,13 +94,32 @@ def read_version(project: Path, version: int) -> tuple[int | None, str]:
         text = timing.read_text(encoding="utf-8")
     except OSError:
         return None, "cut.mp4"
-    block = text.split("VERSIONS", 1)
-    if len(block) < 2:
+    entry = parse_versions(text).get(version)
+    if not entry:
         return None, "cut.mp4"
-    for number, duration, cut_file in VERSION_PATTERN.findall(block[1]):
-        if int(number) == version:
-            return int(duration), cut_file
-    return None, "cut.mp4"
+    return entry["frames"] or None, entry["cut"]
+
+
+def verify_frames(version: int, cut_frames: int, zone_frames: int, declared: int | None) -> None:
+    """Stop the build when the three frame counts disagree.
+
+    The composite uses `shortest=1`, so a mismatch does not look like an error:
+    it looks like a video that ends early or graphics that drift against the
+    speech. Better to fail here than to hand over a file that is subtly wrong.
+    """
+    if cut_frames != zone_frames:
+        raise config.MediaError(
+            f"version {version}: the cut has {cut_frames} frames, the rendered zone has "
+            f"{zone_frames}.\n"
+            "       The layout in src/timing.ts does not match the cut. Fix VERSIONS "
+            "or re-cut, then build again."
+        )
+    if declared is not None and declared != cut_frames:
+        raise config.MediaError(
+            f"version {version}: src/timing.ts adds up to {declared} frames, the cut has "
+            f"{cut_frames}.\n"
+            "       Re-run cut.py and paste the VERSIONS block it prints."
+        )
 
 
 def ensure_dependencies(project: Path, log_dir: Path) -> None:
@@ -129,34 +192,57 @@ def overlay(cut: Path, zone: Path, out_path: Path, sfx_volume: float, crf: int) 
     return out_path
 
 
+def contact_positions(duration: float, columns: int) -> list[float]:
+    """Seek positions that are guaranteed to be inside the video.
+
+    The last frame is the one that gets lost: seeking to the exact duration
+    lands past the end, ffmpeg writes nothing, and the stack then fails on a
+    missing file. Half a frame of headroom keeps every grab inside.
+    """
+    if duration <= 0:
+        raise config.MediaError("the video reports a duration of zero, nothing to sample")
+    last = max(0.0, duration - 0.5 / config.FPS)
+    if columns < 2:
+        return [min(last, duration / 2)]
+    span = last * 0.94
+    offset = last * 0.03
+    return [min(last, offset + span * index / (columns - 1)) for index in range(columns)]
+
+
 def contact_sheet(video: Path, out_path: Path, columns: int = CONTACT_FRAMES) -> Path:
     """One wide JPEG out of evenly spaced frames."""
     duration = config.duration_seconds(video)
-    stills: list[Path] = []
     tmp_dir = out_path.parent / f".{out_path.stem}-frames"
     tmp_dir.mkdir(parents=True, exist_ok=True)
-    for index in range(columns):
-        position = duration * (0.03 + 0.94 * index / max(1, columns - 1))
-        still = tmp_dir / f"{index:02d}.png"
-        config.run(
-            [
-                "ffmpeg", "-v", "error", "-nostdin", "-y",
-                "-ss", f"{position:.3f}", "-i", str(video.resolve()),
-                "-frames:v", "1", "-vf", "scale=320:-2", str(still),
-            ],
-            f"grabbing contact frame {index + 1}",
-        )
-        stills.append(still)
+    try:
+        stills: list[Path] = []
+        for index, position in enumerate(contact_positions(duration, columns)):
+            still = tmp_dir / f"{index:02d}.png"
+            config.run(
+                [
+                    "ffmpeg", "-v", "error", "-nostdin", "-y",
+                    "-ss", f"{position:.3f}", "-i", str(video.resolve()),
+                    "-frames:v", "1", "-vf", "scale=320:-2", str(still),
+                ],
+                f"grabbing contact frame {index + 1}",
+            )
+            if not still.exists() or still.stat().st_size == 0:
+                raise config.MediaError(
+                    f"no frame came back at {position:.2f}s of {video.name} "
+                    f"(duration {duration:.2f}s)"
+                )
+            stills.append(still)
 
-    cmd = ["ffmpeg", "-v", "error", "-nostdin", "-y"]
-    for still in stills:
-        cmd += ["-i", str(still)]
-    cmd += ["-filter_complex", f"hstack=inputs={len(stills)}", "-q:v", "3", str(out_path.resolve())]
-    config.run(cmd, "stacking the contact sheet")
-
-    for still in stills:
-        still.unlink(missing_ok=True)
-    tmp_dir.rmdir()
+        cmd = ["ffmpeg", "-v", "error", "-nostdin", "-y"]
+        for still in stills:
+            cmd += ["-i", str(still)]
+        cmd += [
+            "-filter_complex", f"hstack=inputs={len(stills)}",
+            "-q:v", "3", str(out_path.resolve()),
+        ]
+        config.run(cmd, "stacking the contact sheet")
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
     return out_path
 
 
@@ -181,7 +267,7 @@ def main() -> int:
     out_dir = project / "out"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    duration_frames, cut_name = read_version(project, args.version)
+    declared_frames, cut_name = read_version(project, args.version)
     cut = args.cut.resolve() if args.cut else (project / "public" / cut_name)
     if not cut.exists():
         print(
@@ -196,6 +282,8 @@ def main() -> int:
     final_path = out_dir / f"{slug}-v{args.version}.mp4"
 
     try:
+        config.require_supported_frame_rate(cut)
+
         if not sfx_module.is_complete(project / "public"):
             sfx_module.generate(project / "public")
 
@@ -209,19 +297,7 @@ def main() -> int:
 
         cut_frames = config.frame_count(cut)
         zone_frames = config.frame_count(zone_path)
-        if cut_frames != zone_frames:
-            print(
-                f"[cut] warning: the cut has {cut_frames} frames, the zone render has "
-                f"{zone_frames}. The composite stops at the shorter one, so check "
-                "VERSIONS in src/timing.ts against the cut.",
-                file=sys.stderr,
-            )
-        if duration_frames is not None and duration_frames != cut_frames:
-            print(
-                f"[cut] warning: timing.ts says version {args.version} is "
-                f"{duration_frames} frames, the cut has {cut_frames}.",
-                file=sys.stderr,
-            )
+        verify_frames(args.version, cut_frames, zone_frames, declared_frames)
 
         overlay(cut, zone_path, final_path, args.sfx_volume, args.crf)
         sheet = None

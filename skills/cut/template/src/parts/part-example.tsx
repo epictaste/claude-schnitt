@@ -21,6 +21,7 @@ import {
 	Scene,
 	Typing,
 	UI_FONT,
+	centerX,
 } from '../blocks';
 import type {Cue} from '../sfx';
 import {typeTicks} from '../sfx';
@@ -39,8 +40,48 @@ export const ExampleCues: Cue[] = [
 	...typeTicks(at('run'), 8),
 	{frame: at('installs'), sound: 'ding'},
 	{frame: at('five'), sound: 'click'},
+	{frame: at('seconds'), sound: 'whoosh'},
 	{frame: at('done'), sound: 'pop'},
 ];
+
+/** Counts up instead of standing there: rule 4 applies to the example too. */
+const CountUp: React.FC<{from: number; to: number; frames?: number}> = ({from, to, frames = 10}) => {
+	const frame = useCurrentFrame();
+	const value = Math.round(
+		interpolate(frame - from, [0, frames], [1, to], {
+			extrapolateLeft: 'clamp',
+			extrapolateRight: 'clamp',
+		}),
+	);
+	return <Emphasis text={`${value} SEC`} from={from} y={CARD_Y} />;
+};
+
+/** A bar that fills while the sentence runs, so nothing is ever finished early. */
+const Bar: React.FC<{from: number; to: number}> = ({from, to}) => {
+	const frame = useCurrentFrame();
+	if (frame < from) {
+		return null;
+	}
+	const filled = interpolate(frame, [from, to], [0, 1], {
+		extrapolateLeft: 'clamp',
+		extrapolateRight: 'clamp',
+	});
+	return (
+		<div
+			style={{
+				position: 'absolute',
+				left: centerX(MAX_GRAPHIC_WIDTH),
+				top: 640,
+				width: MAX_GRAPHIC_WIDTH,
+				height: 26,
+				border: `4px solid ${COLORS.grayDark}`,
+				boxSizing: 'border-box',
+			}}
+		>
+			<div style={{width: `${filled * 100}%`, height: '100%', backgroundColor: COLORS.accent}} />
+		</div>
+	);
+};
 
 const Check: React.FC<{from: number}> = ({from}) => {
 	const frame = useCurrentFrame();
@@ -63,7 +104,8 @@ export const ExamplePart: React.FC = () => {
 	if (frame >= switchFrame) {
 		return (
 			<Scene>
-				<Emphasis text="5 SEC" from={switchFrame} y={CARD_Y} />
+				<CountUp from={switchFrame} to={5} />
+				<Bar from={at('seconds')} to={at('then')} />
 				<div style={{position: 'absolute', left: 0, right: 0, top: 700, textAlign: 'center'}}>
 					<Badge text="installed" from={at('done')} />
 				</div>

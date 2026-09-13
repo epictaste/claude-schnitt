@@ -31,6 +31,9 @@ export const COLORS = {
 /** Hard drop shadow. No blur, no glow, no gradient anywhere in this look. */
 export const HARD_SHADOW = '5px 6px 0 #000000';
 
+/** The same idea for boxes: an offset block of black, never a soft glow. */
+export const CARD_SHADOW = '12px 14px 0 #000000';
+
 /** Inter Black for headlines and emphasis words. */
 export const INTER_BLACK = loadInter('normal', {
 	weights: ['900'],
@@ -209,7 +212,7 @@ export const Card: React.FC<{
 				borderRadius: 26,
 				border: `1.5px solid ${border}`,
 				backgroundColor: COLORS.card,
-				boxShadow: '0 30px 80px rgba(0,0,0,0.6)',
+				boxShadow: CARD_SHADOW,
 				overflow: 'hidden',
 				transform: `scale(${settle})`,
 				fontFamily: UI_FONT,

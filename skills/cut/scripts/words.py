@@ -13,10 +13,15 @@ sends it to Deepgram, and writes `words.json`:
 Frames are relative to the start of each part, at 30 fps, so a part file can use
 frame 0 as its own beginning.
 
+Part ranges are frames of the take. They are usually not known before the
+structure of the video is settled, so the normal flow is: transcribe once while
+keeping the raw response, then re-split from that file as often as needed
+without uploading anything again.
+
 Usage:
-  words.py take.mp4
+  words.py take.mp4 --raw-out raw.json
+  words.py take.mp4 --from-json raw.json --parts hookA:0-103,hookB:103-238,body:370-600
   words.py take.mp4 --parts hook:0-130,demo:130-439,cta:439-
-  words.py take.mp4 --from-json raw-deepgram.json     # reparse, no network
 
 Pure stdlib. Only the extracted audio leaves the machine, never the video.
 """
@@ -173,22 +178,19 @@ def split_into_parts(
     return result
 
 
-def timing_snippet(parts: list[tuple[str, int, int]], total_frames: int) -> str:
-    """The PARTS / START / VERSIONS block to paste into src/timing.ts."""
-    ordered = sorted(parts, key=lambda p: p[1])
-    lines = ["export const PARTS = {"]
-    for name, start, end in ordered:
-        lines.append(f"\t{name}: {end - start},")
-    lines.append("} as const;")
+def parts_summary(grouped: dict) -> str:
+    """What was written, in the order the parts start.
+
+    Deliberately not a `VERSIONS` block: the layout of a version comes from
+    cut.py, which is the only script that knows which parts end up in which cut
+    and in what order. Two scripts printing two versions of the same truth is
+    how a project ends up a few frames out.
+    """
+    lines = ["Parts in words.json:"]
+    for name, data in grouped.items():
+        lines.append(f"  {name}: {data['durationFrames']} frames, {len(data['words'])} words")
     lines.append("")
-    lines.append("export const START = {")
-    for name, start, _ in ordered:
-        lines.append(f"\t{name}: {start},")
-    lines.append("} as const;")
-    lines.append("")
-    lines.append("export const VERSIONS = {")
-    lines.append(f"\t1: {{durationInFrames: {total_frames}, cut: 'cut.mp4'}},")
-    lines.append("} as const;")
+    lines.append("VERSIONS for src/timing.ts comes from cut.py, not from here.")
     return "\n".join(lines)
 
 
@@ -297,7 +299,6 @@ def main() -> int:
     )
     parser.add_argument("--model", help=f"Deepgram model (default: {config.DEFAULT_MODEL})")
     parser.add_argument("--language", help=f"language (default: {config.DEFAULT_LANGUAGE})")
-    parser.add_argument("--fps", type=int, default=config.FPS, help="frame rate (default: 30)")
     args = parser.parse_args()
 
     video = args.video
@@ -306,6 +307,7 @@ def main() -> int:
         return 2
 
     try:
+        config.require_supported_frame_rate(video)
         total_frames = config.frame_count(video)
     except config.MediaError as exc:
         print(f"[cut] {exc}", file=sys.stderr)
@@ -360,7 +362,7 @@ def main() -> int:
         print("[cut] Deepgram returned no words. Is there speech on the audio track?", file=sys.stderr)
         return 1
 
-    grouped = split_into_parts(words, parts, args.fps)
+    grouped = split_into_parts(words, parts, config.FPS)
     empty = [name for name, data in grouped.items() if not data["words"]]
     if empty:
         print(
@@ -373,13 +375,10 @@ def main() -> int:
     if args.raw_out:
         config.write_json(args.raw_out, payload)
 
-    counts = ", ".join(f"{name} {len(data['words'])}" for name, data in grouped.items())
-    print(f"[cut] {len(words)} words over {total_frames} frames — per part: {counts}", file=sys.stderr)
+    print(f"[cut] {len(words)} words over {total_frames} frames", file=sys.stderr)
     print(f"[cut] wrote {out_path}", file=sys.stderr)
     print()
-    print("Paste into src/timing.ts:")
-    print()
-    print(timing_snippet(parts, total_frames))
+    print(parts_summary(grouped))
     return 0
 
 

@@ -70,9 +70,10 @@ without configuring a language.
 1. **Preflight.** `setup.py` checks ffmpeg, ffprobe, node, and your Deepgram
    key. On macOS it installs the missing binaries with brew, elsewhere it prints
    the exact commands.
-2. **Words.** The audio is extracted and sent to Deepgram. The result becomes
-   `words.json`: every word with the frame it is spoken on, grouped into the
-   parts of the video, relative to each part.
+2. **Words.** The audio is extracted and sent to Deepgram, once. The result
+   becomes `words.json`: every word with the frame it is spoken on, grouped into
+   the parts of the video, relative to each part. The raw response is kept, so
+   re-splitting into different parts later costs nothing and uploads nothing.
 3. **Zone.** `zone.py` scans several frames for the top edge of your burned-in
    subtitle box and puts the zone 23 px above it. No subtitles means it falls
    back to half the frame.
@@ -81,7 +82,8 @@ without configuring a language.
    floating elements.
 5. **Cuts.** `cut.py` trims and concatenates with ffmpeg, then verifies the
    frame count of every version with ffprobe. A version that is one frame off is
-   rejected rather than built on.
+   rejected rather than built on. Every version gets its own layout, so hooks of
+   different lengths are the normal case and not a special one.
 6. **Scaffold.** The Remotion template is copied next to your video as
    `cut-<slug>/`, with its own `public/` so a render never copies a large shared
    asset folder.
@@ -89,7 +91,9 @@ without configuring a language.
    each rendering stills of its own work and fixing clipped text or a scene that
    stands still before reporting back.
 8. **Render and composite.** Remotion renders the zone, ffmpeg lays it over the
-   cut and mixes six synthesized UI sounds about 10 dB under your voice.
+   cut and mixes six synthesized UI sounds about 10 dB under your voice. If the
+   zone and the cut do not have exactly the same frame count, the build stops
+   instead of quietly trimming to the shorter one.
 9. **Check.** Seven frames of the result are stacked into a contact sheet.
    Claude reads it and answers three questions: does the edge sit right, does
    the graphic match the sentence, is the subtitle box free.
@@ -103,6 +107,7 @@ without configuring a language.
 | `ffmpeg` + `ffprobe` | cutting, measuring, compositing, sound synthesis | free |
 | Node 20+ | Remotion renders the animation zone | free |
 | Python 3.10+ | the scripts, stdlib only | free |
+| A constant 30 fps take | every frame number in the skill assumes it | free, and the scripts print the `ffmpeg` command to convert |
 | [Deepgram API key](https://console.deepgram.com) | word-level timestamps | free credit on signup |
 
 Put the key in `~/.config/cut/.env`:

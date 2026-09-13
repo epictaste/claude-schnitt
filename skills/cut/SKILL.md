@@ -1,6 +1,6 @@
 ---
 name: cut
-version: "1.0.0"
+version: "1.0.1"
 description: Edit a talking-head video. Measures the free zone above the speaker, gets word-level timestamps, cuts frame-exact hook versions, builds a word-synced animation zone with Remotion, and renders finished MP4s. Use when the user says "edit my video", "cut this reel", "animate the top half", "put graphics over my video", "three hook versions", or hands over a local video file to edit.
 argument-hint: "<video-path> [notes]"
 allowed-tools: Bash, Read, Write, Edit, AskUserQuestion, Task
@@ -89,25 +89,44 @@ done
 
 ## Step 3 — Words
 
+Transcribe once and keep the raw response. The part ranges are not known yet,
+they come out of step 5, and nothing is gained by uploading the audio twice:
+
 ```bash
-python3 "${SKILL_DIR}/scripts/words.py" "<video>"
-python3 "${SKILL_DIR}/scripts/words.py" "<video>" --parts hook:0-130,demo:130-439,cta:439-
+python3 "${SKILL_DIR}/scripts/words.py" "<video>" --raw-out "<video-dir>/raw-deepgram.json"
 ```
 
 This extracts the audio, sends it to Deepgram (`nova-3`, `punctuate=true`,
-`utterances=true`), and writes `words.json` next to the video: one entry per
-part, frames relative to the start of that part, 30 fps. It prints a `PARTS` /
-`START` / `VERSIONS` block to paste into `src/timing.ts`.
+`utterances=true`), and writes `words.json` next to the video. Without `--parts`
+everything lands in a single part called `main`, which is all you need in order
+to read the transcript and plan the structure.
 
-Split into parts when the video has clear sections, one part per topic or beat.
-Without `--parts` you get a single part called `main`, which is fine for a short
-clip. Parts are ranges in frames and must not overlap.
+After step 5, when you know the frame ranges, split it again from the saved
+response. This runs offline and takes a second:
+
+```bash
+python3 "${SKILL_DIR}/scripts/words.py" "<video>" \
+  --from-json "<video-dir>/raw-deepgram.json" \
+  --parts hookA:0-103,hookB:103-238,body:370-600
+```
+
+Parts are ranges in **frames of the take**, they must not overlap, and they do
+not have to cover the whole take. Name them the way the parts are named in the
+cut, because those names show up again in `VERSIONS` and in the part files.
+Frames inside `words.json` are relative to the start of each part.
+
+`words.py` writes `words.json` and nothing else. The layout of a version, which
+parts in which order, comes from `cut.py` in step 6.
 
 **The video is the truth.** Every scene change you build later sits on
 `wordFrame(part, 'word')`, never on a time you estimated. Read `words.json`
 before writing part files: speech recognition spells things its own way, and the
 code has to match the transcript, not the script. Never rewrite `words.json` to
 fix a spelling.
+
+**Constant 30 fps only.** The scripts refuse anything else, including variable
+frame rate recordings, and print the `ffmpeg` command to convert the file. Run
+that command, then start again from step 3 with the converted take.
 
 ## Step 4 — Zone
 
@@ -137,36 +156,47 @@ drip-feed these one at a time:
 
 ## Step 6 — Cuts
 
+Name every segment after the part it becomes. That name is what ties the cut,
+`words.json`, and the part files together:
+
 ```bash
 python3 "${SKILL_DIR}/scripts/cut.py" "<video>" \
-  --version "v1=0-103,370-" \
-  --version "v2=103-238,587-"
+  --version "v1=hookA:0-103,body:370-600" \
+  --version "v2=hookB:103-238,body:370-600"
 ```
 
-Segments are frames, half open, so `0-103` ends before frame 103 and the next
-segment can start there. Each version is cut with ffmpeg and its frame count is
-then verified with ffprobe. The script fails loudly on a mismatch, because a cut
-that is one frame off drags every word timing with it.
+Segments are frames of the take, half open, so `0-103` ends before frame 103 and
+the next segment can start there. Versions may have different lengths, which is
+the normal case with hooks: `v1` is 333 frames here, `v2` is 365.
 
-Put the resulting files into the project's `public/` directory in the next step
-and list them in `VERSIONS`.
+Each version is cut with ffmpeg and its frame count is then verified with
+ffprobe. The script fails on a mismatch, because a cut that is one frame off
+drags every word timing with it.
+
+It prints the `VERSIONS` block for `src/timing.ts`. That block is the single
+source for the layout, the lengths, and the file names. Paste it as it is.
 
 ## Step 7 — Scaffold the project
 
 Copy the template next to the video, never into a shared directory: the render
-copies `public/` on every run, so the project needs its own small one.
+copies `public/` on every run, so the project needs its own small one. Exclude
+`node_modules`, a development checkout has a few hundred megabytes sitting
+there:
 
 ```bash
 SLUG="<short-slug>"
 VIDEO_DIR="$(cd "$(dirname "<video>")" && pwd)"
 PROJECT="$VIDEO_DIR/cut-$SLUG"
-cp -R "${SKILL_DIR}/template" "$PROJECT"
-rm -rf "$PROJECT/node_modules" "$PROJECT/out"    # a dev install may be sitting there
+mkdir -p "$PROJECT"
+rsync -a --exclude node_modules --exclude out "${SKILL_DIR}/template/" "$PROJECT/"
 cp "<words.json>" "$PROJECT/src/words.json"
-cp "<cut-v1.mp4>" "$PROJECT/public/cut.mp4"      # one file per version
+cp "<cuts>/v1.mp4" "$PROJECT/public/v1.mp4"      # one cut file per version
 python3 "${SKILL_DIR}/scripts/sfx.py" "$PROJECT/public"
 (cd "$PROJECT" && npm install --no-audit --no-fund)
 ```
+
+Without `rsync`, copy and clean up afterwards:
+`cp -R "${SKILL_DIR}/template" "$PROJECT" && rm -rf "$PROJECT/node_modules" "$PROJECT/out"`.
 
 The `npm install` takes a minute on the first project and is needed before any
 still renders. `build.py` runs it for you if you skip it, but the sub-agents in
@@ -175,9 +205,13 @@ step 8 render stills directly and need the dependencies in place.
 Then edit `src/timing.ts`:
 
 - `ZONE` from step 4.
-- `PARTS`, `START`, `VERSIONS` from the script output. `cut` in each `VERSIONS`
-  entry is the file name inside `public/`.
+- `VERSIONS` exactly as `cut.py` printed it. Each entry names the cut file in
+  `public/` and lists its parts in order with their lengths.
 - `SFX_READY = true` now that the sounds exist.
+
+Nothing else in that file is filled in by hand. `versionLayout()` turns the
+layout into start frames as a running sum, and it throws if a length disagrees
+with `words.json`, which is the check that catches a project drifting apart.
 
 Delete `src/parts/part-example.tsx` and write one file per part instead. Each
 part file exports a component and its sound cues:
@@ -187,11 +221,13 @@ src/parts/part-<name>.tsx  →  export const <Name>Part: React.FC
                               export const <Name>Cues: Cue[]
 ```
 
-Register them in the `DEFAULT_PARTS` map in `src/Top.tsx`. When versions differ
-only in their hook, override that one part per version in `VERSION_PARTS`.
+Register every part in the `COMPONENTS` map in `src/Top.tsx`, keyed by the part
+name from `words.json`. A hook that differs between versions is its own part
+with its own file, `hookA` and `hookB`, not a variant of one shared part. That is
+what lets versions have hooks of different lengths.
 
 Frame 0 inside a part file is the start of that part, because `Top.tsx` wraps
-each part in a `Sequence`.
+each part in a `Sequence` at the offset its version gives it.
 
 ## Step 8 — Build the parts
 
@@ -206,6 +242,11 @@ empty frames, or a scene that stands still before reporting back:
 ```bash
 cd "$PROJECT" && npx remotion still Top-V1 out/<part>-f<N>.png --frame=<N>
 ```
+
+`<N>` is absolute in that version's composition, so it is the part's start plus
+the frame inside the part. The start is the sum of the lengths of the parts
+before it in that version's layout, which differs per version. Work it out once
+per part and hand it to the agent in the briefing.
 
 Do not take an agent's word for it. Spot-check a few stills yourself.
 
@@ -277,7 +318,7 @@ briefing.
 ## Acceptance checklist
 
 - [ ] Zone measured, subtitle box free, hard edge sits right
-- [ ] Frame counts of the cuts match `VERSIONS` exactly
+- [ ] Frame counts of the cuts match their `VERSIONS` layout exactly, per version
 - [ ] Every scene change hangs on `wordFrame`, nothing guessed
 - [ ] No headline repeating the spoken sentence, emphasis only on numbers
 - [ ] No scene standing finished for more than about 1.5 seconds
@@ -292,7 +333,9 @@ briefing.
 | Render dies halfway with no error | output was piped into a command that closed the pipe | log to a file, `build.py` already does |
 | Every render copies gigabytes | the project points at a large shared `public/` | give the project its own `public/`, as in step 7 |
 | `wordFrame` throws | speech recognition spelled the word differently | look it up in `words.json` and use that spelling, never edit the JSON |
-| Graphics drift against the speech | the cut does not have the frame count in `VERSIONS` | re-run `cut.py` and take the verified count |
+| `build.py` stops with a frame count mismatch | the layout in `timing.ts` and the cut disagree | re-run `cut.py` and paste the `VERSIONS` block it prints, do not hand-edit lengths |
+| `versionLayout` throws about a length | a part length in `VERSIONS` differs from `words.json` | re-run `words.py` and `cut.py` with the same ranges |
+| A script refuses the file over frame rate | the take is not constant 30 fps | run the `ffmpeg` command it printed, then start again at step 3 with the converted file |
 | Text clipped at the edge | Inter Black is wide | lower the font size or shorten the text, do not narrow the margins |
 | Zone covers the subtitles | measurement hit a dark shirt, not the box | re-run `zone.py --samples 10`, or pass the height you measured yourself |
 

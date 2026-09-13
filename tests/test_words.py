@@ -81,12 +81,18 @@ def test_frame_end_is_clamped_to_the_part():
     assert grouped["hook"]["words"][0]["frameEnd"] == 60
 
 
-def test_timing_snippet_lists_parts_in_order():
-    snippet = words.timing_snippet([("body", 60, 270), ("hook", 0, 60)], 270)
-    assert "hook: 60," in snippet
-    assert "body: 210," in snippet
-    assert snippet.index("hook: 60,") < snippet.index("body: 210,")
-    assert "durationInFrames: 270" in snippet
+def test_parts_summary_reports_what_was_written_and_nothing_else():
+    grouped = {
+        "hook": {"durationFrames": 60, "words": [{"word": "a", "frame": 0, "frameEnd": 3}]},
+        "body": {"durationFrames": 210, "words": []},
+    }
+    summary = words.parts_summary(grouped)
+    assert "hook: 60 frames, 1 words" in summary
+    assert "body: 210 frames, 0 words" in summary
+    # The layout of a version belongs to cut.py. Two scripts printing it is how
+    # a project ends up a few frames out.
+    assert "VERSIONS" in summary and "comes from cut.py" in summary
+    assert "layout:" not in summary
 
 
 @needs_ffmpeg
@@ -107,4 +113,5 @@ def test_cli_reparses_a_saved_response(tmp_path: Path):
     written = json.loads(out.read_text(encoding="utf-8"))
     assert set(written) == {"hook", "body"}
     assert written["hook"]["words"][0]["word"] == "Start"
-    assert "export const PARTS" in result.stdout
+    assert "Parts in words.json:" in result.stdout
+    assert "export const VERSIONS" not in result.stdout

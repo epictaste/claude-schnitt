@@ -8,20 +8,21 @@ import React from 'react';
 import {Composition} from 'remotion';
 
 import {Check, Top} from './Top';
-import {FPS, VERSIONS, ZONE} from './timing';
+import {FPS, VERSIONS, ZONE, versionDuration} from './timing';
 
 const FULL_FRAME = {width: 1080, height: 1920};
 
 export const RemotionRoot: React.FC = () => (
 	<>
-		{Object.entries(VERSIONS).map(([key, entry]) => {
+		{Object.keys(VERSIONS).map((key) => {
 			const version = Number(key);
+			const duration = versionDuration(version);
 			return (
 				<React.Fragment key={key}>
 					<Composition
 						id={`Top-V${version}`}
 						component={Top}
-						durationInFrames={entry.durationInFrames}
+						durationInFrames={duration}
 						fps={FPS}
 						width={ZONE.width}
 						height={ZONE.height}
@@ -30,7 +31,7 @@ export const RemotionRoot: React.FC = () => (
 					<Composition
 						id={`Check-V${version}`}
 						component={Check}
-						durationInFrames={entry.durationInFrames}
+						durationInFrames={duration}
 						fps={FPS}
 						width={FULL_FRAME.width}
 						height={FULL_FRAME.height}
