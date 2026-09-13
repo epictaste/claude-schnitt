@@ -1,0 +1,40 @@
+{
+  "metadata": {
+    "model_info": {"name": "nova-3"},
+    "duration": 9.0
+  },
+  "results": {
+    "channels": [
+      {
+        "alternatives": [
+          {
+            "transcript": "Start here. Then run one command, and you are done.",
+            "words": [
+              {"word": "start", "punctuated_word": "Start", "start": 0.0, "end": 0.4},
+              {"word": "here", "punctuated_word": "Here.", "start": 0.4, "end": 0.8},
+              {"word": "then", "punctuated_word": "Then", "start": 2.0, "end": 2.3},
+              {"word": "run", "punctuated_word": "run", "start": 2.3, "end": 2.6},
+              {"word": "one", "punctuated_word": "one", "start": 2.6, "end": 2.9},
+              {"word": "command", "punctuated_word": "command,", "start": 2.9, "end": 3.5},
+              {"word": "and", "punctuated_word": "and", "start": 6.0, "end": 6.2},
+              {"word": "you", "punctuated_word": "you", "start": 6.2, "end": 6.4},
+              {"word": "are", "punctuated_word": "are", "start": 6.4, "end": 6.6},
+              {"word": "done", "punctuated_word": "done.", "start": 6.6, "end": 7.2}
+            ]
+          }
+        ]
+      }
+    ],
+    "utterances": [
+      {
+        "start": 0.0,
+        "end": 0.8,
+        "transcript": "Start here.",
+        "words": [
+          {"word": "start", "punctuated_word": "Start", "start": 0.0, "end": 0.4},
+          {"word": "here", "punctuated_word": "Here.", "start": 0.4, "end": 0.8}
+        ]
+      }
+    ]
+  }
+}

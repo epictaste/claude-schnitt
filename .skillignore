@@ -1,0 +1,27 @@
+# Install-time scanner exclusions for scans that start at the repository root.
+# Keep the public bundle focused on the runtime skill under skills/cut/.
+
+# VCS, local envs, caches, generated output
+.git/
+.venv/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+.pytest_cache/
+node_modules/
+out/
+
+# Repo automation and host-specific packaging
+.github/
+.agents/
+.claude-plugin/
+hooks/
+
+# Non-runtime docs, assets, and tests
+tests/
+assets/
+README.md
+CHANGELOG.md
+AGENTS.md
+CLAUDE.md

@@ -1,0 +1,21 @@
+{
+  "name": "epictaste",
+  "metadata": {
+    "description": "Let Claude edit your talking-head video. /cut builds a word-synced animation zone above your face, cuts hook versions, and renders finished MP4s."
+  },
+  "owner": {
+    "name": "Georg Kinzel"
+  },
+  "plugins": [
+    {
+      "name": "cut",
+      "description": "Edit a talking-head video: animation zone above the speaker, frame-exact hook versions, finished MP4s.",
+      "author": {
+        "name": "Georg Kinzel"
+      },
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/epictaste/claude-cut"
+    }
+  ]
+}

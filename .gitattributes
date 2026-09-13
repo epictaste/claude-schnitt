@@ -1,0 +1,19 @@
+# Exclude non-runtime files from `git archive` output, which is what
+# /plugin install and the Agent Skills CLI fetch.
+
+__pycache__/   export-ignore
+node_modules/  export-ignore
+*.pyc          export-ignore
+.DS_Store      export-ignore
+
+tests/         export-ignore
+docs/          export-ignore
+assets/        export-ignore
+.agents/       export-ignore
+.github/       export-ignore
+
+.gitignore     export-ignore
+.gitattributes export-ignore
+
+# NOTE: hooks/ and .claude-plugin/ are deliberately NOT export-ignored. Claude
+# Code's /plugin install fetches the full-repo archive and needs them.

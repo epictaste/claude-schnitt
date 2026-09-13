@@ -1,0 +1,30 @@
+# OS / editor / tooling
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.coverage
+.idea/
+.vscode/
+
+# Node / Remotion
+node_modules/
+out/
+.remotion/
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Secrets. The key lives in ~/.config/cut/.env, never in the repo.
+.env
+
+# Rendered media. Keep the repo free of video, the tests build their own.
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.wav
+
+# Test fixtures are the exception, if one is ever checked in.
+!tests/fixtures/*.mp4

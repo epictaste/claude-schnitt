@@ -1,0 +1,32 @@
+{
+ "hook": {
+  "durationFrames": 90,
+  "words": [
+   {"word": "Your", "frame": 0, "frameEnd": 9},
+   {"word": "hook", "frame": 9, "frameEnd": 21},
+   {"word": "goes", "frame": 21, "frameEnd": 33},
+   {"word": "here.", "frame": 33, "frameEnd": 48},
+   {"word": "Replace", "frame": 48, "frameEnd": 66},
+   {"word": "this", "frame": 66, "frameEnd": 75},
+   {"word": "file.", "frame": 75, "frameEnd": 90}
+  ]
+ },
+ "example": {
+  "durationFrames": 180,
+  "words": [
+   {"word": "You", "frame": 0, "frameEnd": 9},
+   {"word": "run", "frame": 9, "frameEnd": 21},
+   {"word": "one", "frame": 21, "frameEnd": 30},
+   {"word": "command,", "frame": 30, "frameEnd": 48},
+   {"word": "it", "frame": 48, "frameEnd": 54},
+   {"word": "installs", "frame": 54, "frameEnd": 78},
+   {"word": "in", "frame": 78, "frameEnd": 84},
+   {"word": "five", "frame": 84, "frameEnd": 99},
+   {"word": "seconds,", "frame": 99, "frameEnd": 120},
+   {"word": "and", "frame": 120, "frameEnd": 129},
+   {"word": "then", "frame": 129, "frameEnd": 141},
+   {"word": "you're", "frame": 141, "frameEnd": 153},
+   {"word": "done.", "frame": 153, "frameEnd": 180}
+  ]
+ }
+}
