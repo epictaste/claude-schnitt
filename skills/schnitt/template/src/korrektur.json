@@ -1,0 +1,5 @@
+{
+  "_hinweis": "Je Projekt pflegen. korrektur: Hörfehler der Spracherkennung auf dem Wortkern (ohne Satzzeichen), z. B. \"Cloud\": \"Claude\", Zahlwörter als Ziffern. gross: Schlüsselwörter mit fester Größe s, m, l oder xl, z. B. das Kommentar-Wort.",
+  "korrektur": {"Cloud": "Claude"},
+  "gross": {}
+}

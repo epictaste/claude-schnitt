@@ -1,7 +1,7 @@
-# Install-time scanner exclusions for scans that start at the repository root.
-# Keep the public bundle focused on the runtime skill under skills/cut/.
+# Ausschlüsse für Scanner, die im Repo-Wurzelordner starten.
+# Das öffentliche Paket ist der Skill unter skills/schnitt/.
 
-# VCS, local envs, caches, generated output
+# Versionsverwaltung, lokale Umgebungen, Caches, Ausgaben
 .git/
 .venv/
 __pycache__/
@@ -12,15 +12,16 @@ __pycache__/
 node_modules/
 out/
 
-# Repo automation and host-specific packaging
+# Automatisierung und Paket-Manifeste
 .github/
 .agents/
 .claude-plugin/
 hooks/
 
-# Non-runtime docs, assets, and tests
-tests/
-assets/
+# Nicht zur Laufzeit nötig. Nur die Ordner im Wurzelverzeichnis,
+# skills/schnitt/assets/ wird zur Laufzeit gebraucht.
+/tests/
+/assets/
 README.md
 CHANGELOG.md
 AGENTS.md

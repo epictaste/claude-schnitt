@@ -1,0 +1,20 @@
+{
+  "name": "standard",
+  "beschreibung": "Gelbes Plakat in Versalien mit dunkler Kontur, Untertitel unter dem Kinn, dunkle Vollbild-Grafiken mit warmem Weiß.",
+  "schrift": {"plakat": "Montserrat", "untertitel": "Inter", "grafik": "Inter"},
+  "farben": {
+    "plakat": "#FFD60A",
+    "plakatKontur": "#111111",
+    "text": "#F6F4F0",
+    "textGedimmt": "rgba(246,244,240,0.62)",
+    "akzent": "#FFD60A",
+    "grund": "#0A0A0A",
+    "grundLicht": "#2A2826",
+    "haken": "#7CE3A0"
+  },
+  "plakat": {"y": 470, "groesse": 104, "versalien": true, "kontur": 3.2, "maxBreite": 940},
+  "untertitel": {"modus": "springend", "groessen": [54, 68, 88, 108], "einheitlich": 60, "abstandKinn": 25, "vollbildY": 1500},
+  "zoom": {"hookPlus": 0.38, "nahPlus": 0.1, "augenZielY": 990},
+  "buehne": {"y": 170, "hoehe": 600, "maxBreite": 900},
+  "voll": {"x": 70, "y": 260, "breite": 940, "hoehe": 1160}
+}

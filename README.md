@@ -1,206 +1,125 @@
-# /cut
+# /schnitt
 
-<p align="center">
-  <img src="assets/cut-hero.png" alt="The /cut mascot: a vertical video with an animated graphics zone above a talking head" width="420">
-</p>
+**Claude schneidet dein Video.**
 
-**Let Claude edit your talking-head video.**
-
-One prompt, one skill: a word-synced animation zone above your face, cut into
-hook versions, rendered to finished MP4s.
-
-Claude Code (recommended, auto-updates via the marketplace):
-```
-/plugin marketplace add epictaste/claude-cut
-/plugin install cut@epictaste
-```
-
-Codex, Cursor, Copilot, Gemini CLI, or any of the 50+
-[Agent Skills](https://agentskills.io) hosts:
-```bash
-npx skills add epictaste/claude-cut -g
-```
-(`-g` installs globally for your user. Drop it to scope the install to the
-current project.)
-
----
-
-You shot a good take. What is missing is the half hour of editing on top: the
-graphics that make the top half worth watching, a second version with the other
-hook you recorded, and every cut landing on the right word.
-
-`/cut` does that part. You hand it a vertical video, it measures how much room
-there is above your face, transcribes the audio down to the individual word,
-cuts the versions frame by frame, builds the animation zone as a real Remotion
-project, and renders the finished files.
+Du drehst, Claude schneidet: die besten Takes raus, Versprecher und Räusperer weg, ein Look nach
+deinen Vorbildern, Grafiken, die du auswählst, Untertitel Wort für Wort, Zoom auf jedem Schnitt,
+Augen bei jedem Schnitt auf derselben Höhe, Sounds, mehrere Hook-Versionen und eine Endkontrolle,
+bevor du irgendwas postest.
 
 ```
-/cut ~/Movies/take.mp4 I shot three hooks back to back, make three versions
+/plugin marketplace add epictaste/claude-schnitt
+/plugin install schnitt@epictaste
+/schnitt dein-video.mov
 ```
 
-The thing that makes this work is one rule: **the video is the truth.** Every
-scene change sits on a word that was actually spoken, looked up from the
-transcript, never on a time somebody estimated. Animation that lands on the word
-reads as edited. Animation that lands near the word reads as broken.
+> **Version 2.0 ersetzt `/cut`.** Das Repo hieß vorher `claude-cut`. Wer `/cut` installiert hat,
+> deinstalliert es (`/plugin uninstall cut@epictaste`) und installiert `schnitt` wie oben.
 
-## What people use it for
+## Für wen
 
-**Turn one take into several hooks.** Record three openers back to back, get
-three finished videos that share the same body and differ only in the first few
-seconds. Post one, keep the others, compare.
+Für alle, die vor der Kamera sprechen und nicht stundenlang im Schnittprogramm sitzen wollen.
+Programmieren musst du nicht. Du redest mit Claude, Claude ruft die Werkzeuge auf.
 
-**Fill the top half.** A vertical talking head leaves the upper part of the
-frame doing nothing. `/cut` fills it with a terminal typing out the command you
-are describing, a card with the number you just said, a check mark landing on
-the word "done".
+Gebaut für den **Mac**. Auf anderen Systemen laufen die meisten Schritte, die Augen-Messung nicht.
 
-**Put numbers on screen.** The claim you make out loud is more convincing when
-the figure is sitting next to your head while you say it. The skill will not
-invent one: it only shows what you give it.
+## Die sechs Schritte
 
-**Keep the secrets out.** A screen recording of a prompt, a key, a private path
-goes under a pixel mosaic with only the first line readable.
+| Schritt | Was ein Cutter sonst macht | Was Claude macht | Was du machst |
+|---|---|---|---|
+| 1 Voraussetzungen | Arbeitsplatz einrichten | prüft und installiert ffmpeg, Node und Remotion | Deepgram-Schlüssel eintragen |
+| 2 Rohschnitt | Material sichten, beste Takes wählen | liest das Wort-Transkript, findet doppelte und verpatzte Takes, legt jeden Schnitt in die Stille | Take-Tabelle abnicken, Takes-Vorschau anhören |
+| 3 Stil beibringen | sich zeigen lassen, was gefällt | schaut 2 bis 3 Videos von Creatorn an, deren Look du magst, und beschreibt Schrift, Farben, Untertitel, Tempo | „passt“ sagen |
+| 4 Stil testen | Standbilder zeigen, bevor gerendert wird | baut 3 Standbilder aus deinem echten Video | „passt“ sagen |
+| 5 Storyboard | pro Satz festlegen, was im Bild passiert | schlägt je Szene 2 bis 4 Grafiken vor, mit einem roten Faden durchs ganze Video | je Szene wählen |
+| 6 Schnitt + Feinschliff | Farbe, Zoom, Ton, Export, Kontrolle | 5 Licht-Varianten, Augen auf gleicher Höhe, Zoom-Sprung auf jedem Schnitt, Sounds, Hook-Versionen, Endkontrolle | Licht wählen, Sounds anhören, Vorschau ansehen |
 
-**Edit in the language you speak.** Deepgram's `nova-3` with `language=multi`
-handles English, German, and clips that mix the two, so the word lookup works
-without configuring a language.
+Nur den Rohschnitt willst du? `/schnitt dein-video.mov nur rohschnitt` hört nach Schritt 2 auf und
+funktioniert auch mit Querformat.
 
-## How it works
+## Was du brauchst
 
-1. **Preflight.** `setup.py` checks ffmpeg, ffprobe, node, and your Deepgram
-   key. On macOS it installs the missing binaries with brew, elsewhere it prints
-   the exact commands.
-2. **Words.** The audio is extracted and sent to Deepgram, once. The result
-   becomes `words.json`: every word with the frame it is spoken on, grouped into
-   the parts of the video, relative to each part. The raw response is kept, so
-   re-splitting into different parts later costs nothing and uploads nothing.
-3. **Zone.** `zone.py` scans several frames for the top edge of your burned-in
-   subtitle box and puts the zone 23 px above it. No subtitles means it falls
-   back to half the frame.
-4. **Structure.** Claude asks one bundled set of questions: which hook versions,
-   a text hook poster or a word animation, dark zone with a hard edge or
-   floating elements.
-5. **Cuts.** `cut.py` trims and concatenates with ffmpeg, then verifies the
-   frame count of every version with ffprobe. A version that is one frame off is
-   rejected rather than built on. Every version gets its own layout, so hooks of
-   different lengths are the normal case and not a special one.
-6. **Scaffold.** The Remotion template is copied next to your video as
-   `cut-<slug>/`, with its own `public/` so a render never copies a large shared
-   asset folder.
-7. **Parts.** One sub-agent per part of the video, briefed with `PART_BRIEF.md`,
-   each rendering stills of its own work and fixing clipped text or a scene that
-   stands still before reporting back.
-8. **Render and composite.** Remotion renders the zone, ffmpeg lays it over the
-   cut and mixes six synthesized UI sounds about 10 dB under your voice. If the
-   zone and the cut do not have exactly the same frame count, the build stops
-   instead of quietly trimming to the shorter one.
-9. **Check.** Seven frames of the result are stacked into a contact sheet.
-   Claude reads it and answers three questions: does the edge sit right, does
-   the graphic match the sentence, is the subtitle box free.
-10. **Deliver.** It prints the paths. That is the end. It does not post, upload,
-    or message anyone.
+| Was | Wofür | Kosten |
+|---|---|---|
+| Claude Pro oder Max | Schneiden braucht viele Token. Wer regelmäßig schneidet, braucht mehr Limit | dein Abo |
+| Claude Code (Terminal oder Code-Tab der Desktop-App) | hier läuft der Skill | im Abo enthalten |
+| [Deepgram-Konto](https://console.deepgram.com) | Transkript mit Zeitstempel für jedes Wort, darauf baut alles auf | Startguthaben bei der Anmeldung, danach nach Verbrauch |
+| ffmpeg, Node 20 oder neuer, Python 3.10 oder neuer | schneiden, Grafiken, Messungen | kostenlos, Claude installiert sie beim ersten Lauf über Homebrew |
 
-## Requirements
-
-| What | Why | Cost |
-|------|-----|------|
-| `ffmpeg` + `ffprobe` | cutting, measuring, compositing, sound synthesis | free |
-| Node 20+ | Remotion renders the animation zone | free |
-| Python 3.10+ | the scripts, stdlib only | free |
-| A constant 30 fps take | every frame number in the skill assumes it | free, and the scripts print the `ffmpeg` command to convert |
-| [Deepgram API key](https://console.deepgram.com) | word-level timestamps | free credit on signup |
-
-Put the key in `~/.config/cut/.env`:
+Den Deepgram-Schlüssel trägst du in `~/.config/schnitt/.env` ein, die Datei legt der erste Lauf an:
 
 ```
-DEEPGRAM_API_KEY=your-key-here
+DEEPGRAM_API_KEY=<dein Schlüssel>
 ```
 
-If you already use [`watch`](https://github.com/epictaste/claude-eyes), the key
-in `~/.config/watch/.env` is picked up automatically and there is nothing to
-configure.
+Nutzt du schon [`watch`](https://github.com/epictaste/claude-eyes), wird der Schlüssel aus
+`~/.config/watch/.env` mitgelesen.
 
-## The look
+## Ehrlich: was hält und was nicht
 
-Neutral and hard edged, built to stay readable on a phone at arm's length:
+**Was hält:** Takes auswählen, Versprecher und Räusperer finden, Schnitte in die Stille legen,
+Zoom, Augenhöhe, Untertitel und die technische Endkontrolle. Das sind die Arbeiten, die beim
+Schneiden am meisten Zeit fressen, und die nimmt dir Claude ab.
 
-- Inter Black with a hard drop shadow, no glow, no blur, no gradient
-- Black, white, gray, and exactly one accent color, terracotta by default, one
-  line in `blocks.tsx` to change
-- Green only for check marks inside mock interfaces
-- Mock interfaces instead of text chips: a terminal, a chat window, a file card
-- A core graphic at most 760 px wide, vertically centered, with the top 180 px
-  left free for the platform header
+**Rendern braucht Zeit und Token.** Das liegt an der Rechenleistung beim Rendern, nicht an Claude.
+Ein Video mit mehreren Versionen kann inklusive deiner Entscheidungen zwischendurch mehrere Stunden
+brauchen. Deshalb hat jeder Schritt einen Prüfpunkt: erst Tabelle, dann Vorschau, dann
+Standbilder, erst dann der teure Render.
 
-And a short list of things it will not do, because they are the usual ways this
-kind of video goes wrong:
+**Sounds sind die schwächste Stelle.** Claude kann nicht hören. Die Effekte werden per ffmpeg
+erzeugt, sitzen auf sichtbaren Ereignissen und liegen unter deiner Stimme. Ob sie passen,
+entscheidest du mit deinen Ohren.
 
-- No headline that repeats the sentence you are speaking
-- No emphasis word that is not a number
-- No fade, no spring, nothing floating
-- No scene that stands there finished while you keep talking
+**Geschmack bleibt bei dir.** Claude baut, was du auswählst. Welche Grafik, welcher Look, welches
+Licht: das fragt der Skill jedes Mal, statt es selbst zu entscheiden.
 
-## Usage
+## Was du bekommst
 
 ```
-/cut ~/Movies/take.mp4
-/cut ~/Movies/take.mp4 animate the top half, terracotta accent
-/cut take.mp4 three hooks in the first 20 seconds, one version each
-/cut take.mp4 no burned-in subtitles, use the top half
+schnitt-dein-video/
+├── rohschnitt/   Transkript, Take-Auswahl, Schnittkanten
+├── stil/         Bilder deiner Referenzen, Stilbeschreibung
+├── schnitt/      Versionen, Wortzeiten, Augen, Licht, Sounds
+├── remotion/     das Projekt mit Grafiken und Untertiteln, im Browser anschaubar (npm run studio)
+└── aus/          fertige Videos je Version, Abnahme-Bericht, 720p-Vorschau fürs Handy
 ```
 
-## Structure
+Der Skill postet nichts, lädt nichts hoch und schreibt niemandem. Am Ende stehen Dateipfade.
+
+## Logos
+
+Echte Logos statt Platzhalter-Kästchen: leg die Logos der Apps und Marken, über die du sprichst, in
+`schnitt-<name>/remotion/public/logos/`. Auf dem Mac kann Claude das Icon einer installierten App
+selbst aus dem Programmpaket holen. Nimm nur Logos, die du zeigen darfst.
+
+## Aufbau
 
 ```
 .
-├── skills/cut/                 # self-contained skill, copied as a unit by every installer
-│   ├── SKILL.md                # the skill contract and the design rules
-│   ├── PART_BRIEF.md           # briefing for a sub-agent building one part
-│   ├── scripts/
-│   │   ├── setup.py            # preflight and installer
-│   │   ├── words.py            # Deepgram word timings to per-part frames
-│   │   ├── zone.py             # subtitle-box measurement, no image library
-│   │   ├── cut.py              # frame-exact cuts, verified with ffprobe
-│   │   ├── sfx.py              # six UI sounds synthesized with ffmpeg
-│   │   ├── build.py            # render, composite, contact sheet
-│   │   └── config.py           # shared config and media helpers
-│   └── template/               # the Remotion project that gets scaffolded
-│       └── src/{timing,blocks,Top,Root,sfx}.* + parts/
-├── hooks/                      # SessionStart status hook (Claude Code)
-├── .claude-plugin/             # plugin.json + marketplace.json
-├── .codex-plugin/              # Codex and Agent Skills manifest
-├── tests/                      # pytest, ffmpeg-synthesized clips, no network
-└── .github/workflows/ci.yml    # pytest plus a template typecheck
+├── skills/schnitt/
+│   ├── SKILL.md                 Ablauf der sechs Schritte
+│   ├── referenz/                ein Dokument je Schritt, Regeln für Grafiken, Standard-Stil
+│   ├── scripts/                 Python- und Shell-Werkzeuge (setup, transkript, schnitt, geruest, bauen, abnahme …)
+│   ├── assets/                  Farb-LUTs, Augen-Werkzeug (Swift)
+│   └── template/                Remotion-Projekt, wird je Video kopiert
+├── hooks/                       Status-Hook beim Start von Claude Code
+├── .claude-plugin/              plugin.json und marketplace.json
+└── tests/                       pytest mit synthetischen Videos, ohne Netz
 ```
 
-## Develop
+## Entwickeln
 
 ```bash
-# Tests (ffmpeg required for the media tests)
 python3 -m pytest -q
-
-# Template typecheck
-cd skills/cut/template && npm ci && npx tsc --noEmit
-
-# See the look without a video
-cd skills/cut/template && npx remotion still Top-V1 /tmp/cut-still.png --frame=10
+cd skills/schnitt/template && npm ci && npx tsc --noEmit
 ```
 
-See [CHANGELOG.md](CHANGELOG.md) for version history and
-[SECURITY.md](SECURITY.md) for what leaves your machine.
+Versionen stehen in [CHANGELOG.md](CHANGELOG.md), was deinen Rechner verlässt, steht in
+[SECURITY.md](SECURITY.md).
 
-## Open source
+## Lizenz
 
-MIT license.
-
-Built on [Remotion](https://remotion.dev), `ffmpeg`, and
-[Deepgram](https://deepgram.com). Companion to
-[claude-eyes](https://github.com/epictaste/claude-eyes), which gives Claude a
-video input and shares the same config file.
-
-Maintained by Georg Kinzel. More on AI workflows at
-[georgkinzel.de](https://georgkinzel.de).
-
----
-
-[github.com/epictaste/claude-cut](https://github.com/epictaste/claude-cut) · [LICENSE](LICENSE)
+MIT, siehe [LICENSE](LICENSE). Gebaut mit [Remotion](https://remotion.dev), ffmpeg und
+[Deepgram](https://deepgram.com). Remotion hat eine eigene Lizenz: für Einzelpersonen und kleine
+Firmen kostenlos, größere Firmen brauchen eine Firmenlizenz, siehe
+[remotion.dev/license](https://remotion.dev/license).

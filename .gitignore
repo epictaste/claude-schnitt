@@ -1,4 +1,4 @@
-# OS / editor / tooling
+# Betriebssystem, Editor, Werkzeuge
 .DS_Store
 __pycache__/
 *.pyc
@@ -12,19 +12,24 @@ __pycache__/
 node_modules/
 out/
 .remotion/
+skills/schnitt/template/public/stilprobe/
+skills/schnitt/template/public/video/*
+!skills/schnitt/template/public/video/.gitkeep
 
-# Local Claude Code settings
+# Lokale Claude-Code-Einstellungen
 .claude/settings.local.json
 
-# Secrets. The key lives in ~/.config/cut/.env, never in the repo.
+# Geheimnisse. Der Key liegt in ~/.config/schnitt/.env, nie im Repo.
 .env
 
-# Rendered media. Keep the repo free of video, the tests build their own.
+# Projektordner, falls /schnitt im Repo selbst ausprobiert wird
+schnitt-*/
+
+# Medien. Das Repo bleibt frei von Video und Ton, die Tests bauen ihre eigenen.
 *.mp4
 *.mov
 *.mkv
 *.webm
 *.wav
-
-# Test fixtures are the exception, if one is ever checked in.
-!tests/fixtures/*.mp4
+*.mp3
+*.aiff

@@ -1,0 +1,24 @@
+{
+  "name": "schnitt-projekt",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Remotion-Projekt für ein Video, das Claude mit /schnitt schneidet.",
+  "scripts": {
+    "studio": "remotion studio",
+    "still": "remotion still",
+    "typecheck": "tsc --noEmit",
+    "cues": "esbuild src/cues-export.ts --bundle --platform=node --outfile=node_modules/.cache/schnitt/cues.cjs --log-level=warning && node node_modules/.cache/schnitt/cues.cjs"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.424",
+    "@remotion/google-fonts": "4.0.424",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "remotion": "4.0.424"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.0",
+    "esbuild": "0.25.0",
+    "typescript": "5.7.3"
+  }
+}

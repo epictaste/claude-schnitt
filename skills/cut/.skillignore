@@ -1,4 +1,0 @@
-# Scans that start from this skill directory. The template's installed
-# dependencies and render output are never part of the skill itself.
-template/node_modules/
-template/out/

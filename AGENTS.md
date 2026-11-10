@@ -1,77 +1,54 @@
-# cut skill
+# schnitt
 
-Agent Skills package that lets an agent edit a vertical talking-head video:
-measure the free zone above the speaker, get word-level timestamps, cut
-frame-exact hook versions, build a word-synced animation zone with Remotion, and
-render finished MP4s. Installable in Claude Code, Codex, Cursor, GitHub Copilot,
-and other [Agent Skills](https://agentskills.io) hosts. The Python side is pure
-stdlib and orchestrates `ffmpeg`, `ffprobe`, Remotion, and the Deepgram API.
+Agent-Skill-Paket, mit dem ein Agent ein selbst gedrehtes Video (Person spricht in die Kamera) in
+sechs Schritten schneidet: Rohschnitt, Stil aus Referenzen, Stilprobe, Storyboard, Feinschliff,
+Endkontrolle. Die Python-Skripte steuern ffmpeg, ffprobe, Remotion und die Deepgram-API.
 
-## Structure
+## Aufbau
 
-- `skills/cut/SKILL.md` — the skill contract. Source of truth for behavior on
-  every host.
-- `skills/cut/scripts/` — `setup.py` (preflight and installer), `words.py`
-  (Deepgram word timings to frames), `zone.py` (subtitle-box measurement),
-  `cut.py` (frame-exact cuts with ffprobe verification), `sfx.py` (six
-  ffmpeg-synthesized UI sounds), `build.py` (render, composite, contact sheet),
-  `config.py` (shared config plus the ffmpeg and ffprobe wrappers).
-- `skills/cut/template/` — the Remotion project that gets copied next to the
-  user's video. `src/timing.ts` holds the zone, the word timings, and one layout
-  per version; `src/blocks.tsx` holds the shared visual blocks; `src/parts/`
-  holds one file per part.
-- `skills/cut/PART_BRIEF.md` — the briefing handed to a sub-agent that builds one
-  part.
-- `hooks/` — Claude Code SessionStart status hook.
-- `.claude-plugin/`, `.codex-plugin/`, `.agents/plugins/` — host manifests.
-- `tests/` — pytest suite. Videos are synthesized with ffmpeg, the Deepgram path
-  runs against a fixture. No network.
+- `skills/schnitt/SKILL.md`: der Ablauf. Maßgeblich für das Verhalten, unter 400 Zeilen halten.
+- `skills/schnitt/referenz/`: `schritt-1-voraussetzungen.md` bis `schritt-6-feinschliff.md`,
+  `regeln-grafiken.md` (Brief für Bau-Agents), `stil-standard.md` (Standard-Look und Schema von `stil.json`).
+- `skills/schnitt/scripts/`: Werkzeuge je Schritt. `geruest.py` schreibt aus `schnitt/meta.json`,
+  `schnitt/woerter.json` und `spec.json` das Gerüst `remotion/src/reel.ts` samt Szenen-Tabelle.
+- `skills/schnitt/template/`: das Remotion-Projekt, das je Video nach `schnitt-<name>/remotion/`
+  kopiert wird. `src/reel.ts` ist ein Beispiel und wird pro Projekt von `geruest.py` ersetzt.
+- `hooks/`: Status-Hook beim Start von Claude Code.
+- `.claude-plugin/`: Manifeste.
+- `tests/`: pytest, Videos per ffmpeg erzeugt, kein Netz.
 
-## Orientation
+## Orientierung
 
-- **The product is the skill, not a CLI.** The scripts are implementation. They
-  have to work on every host the skill installs into.
-- **The skill is one self-contained folder: `skills/cut/`.** SKILL.md,
-  `scripts/`, and `template/` are siblings inside it. That is what lets
-  `npx skills add` copy a working skill as a unit. Do not move them apart.
-- **Path resolution is harness-agnostic.** SKILL.md resolves `SKILL_DIR` as the
-  directory of the SKILL.md the model just Read. Do not reintroduce
-  `${CLAUDE_SKILL_DIR}`, which is unset outside Claude Code.
-- **No `commands/` wrapper.** `/cut` comes from the SKILL.md frontmatter
-  (`name: cut` plus `user-invocable: true`).
-- **The design rules are the product.** The value of this skill is not the
-  scripting, it is the list of rules in SKILL.md and PART_BRIEF.md that keep an
-  animation readable: changes on spoken words, no headline repeating the voice,
-  hard cuts, never standing still. Changes there matter more than refactors.
+- **Das Produkt ist der Skill.** Die Skripte sind Werkzeug, die Regeln in SKILL.md und `referenz/`
+  sind der Wert: Schnitte in die Stille, nur ganze Sätze, Wortmarken statt geschätzter Zeiten,
+  Prüfpunkt vor jedem teuren Schritt, der Nutzer wählt das Design.
+- **Ein Ordner, eine Einheit.** `SKILL.md`, `scripts/`, `referenz/` und `template/` liegen
+  nebeneinander in `skills/schnitt/`. Nicht auseinanderziehen.
+- **`SKILL_DIR` ist der Ordner der gelesenen SKILL.md.** Keine harness-spezifischen Variablen einführen.
+- **Datenverträge sind eingefroren.** Dateinamen im Projektordner und die Exporte von `reel.ts`
+  (`FPS`, `VERSIONEN`, `HOOK`, `SATZ2`, `TAKE_SCHNITTE`, `BODY_SCHNITTE`, `BODY`, `GESAMT`,
+  `HOOK_WOERTER`, `BODY_WOERTER`, `BUEHNE`, `VOLL`, `KOPF_Y`, `AUGEN_Y`, `GESICHT_X`, `ZOOM`,
+  `HOOK_SZENEN`, `SZENEN`, `VOLLBILD`) lesen mehrere Skripte. Umbenennen bricht die Abnahme.
+- **`reel.ts` heißt klein, die Komposition `Komposition.tsx`.** macOS unterscheidet Groß- und
+  Kleinschreibung nicht, `Reel.tsx` neben `reel.ts` bricht den Import.
+- **Kein Audio-Element im Remotion-Projekt**, auch nicht im Kommentar. `bauen.sh` sucht danach und
+  rendert sonst den Ton selbst, statt die Mischung aus `--ton-video` zu nehmen.
 
-## Commands
+## Befehle
 
 ```bash
-# Tests (ffmpeg required for the media tests, no network)
 python3 -m pytest -q
-
-# Template typecheck
-cd skills/cut/template && npm ci && npx tsc --noEmit
-
-# A still from the template, to see the look without a video
-cd skills/cut/template && npx remotion still Top-V1 /tmp/cut-still.png --frame=10
+cd skills/schnitt/template && npm ci && npx tsc --noEmit
+cd skills/schnitt/template && npx remotion still Zone-v1 /tmp/schnitt-probe.png --frame=150
 ```
 
-## Rules
+## Regeln
 
-- Keep the version in sync across `skills/cut/SKILL.md` (frontmatter),
-  `.claude-plugin/plugin.json`, and `.codex-plugin/plugin.json` when releasing.
-- Never commit an API key, an `.env`, or a rendered video.
-- Renders log to a file, never to a pipe. A pipe that closes kills Remotion with
-  SIGPIPE mid-render.
-- A project keeps its own `public/` directory. Pointing a render at a large
-  shared one copies it on every single run.
-- **Versions do not share a timeline.** Each one has its own layout in
-  `VERSIONS`, and `versionLayout()` derives the start frames from it. Do not
-  reintroduce a global `PARTS`/`START`: it makes hooks of different lengths
-  impossible, which is the main thing this skill is for.
-- **`cut.py` is the only source of the `VERSIONS` block.** `words.py` writes
-  `words.json` and says nothing about layout. Two scripts printing the same
-  truth is how a project ends up a few frames out.
-- Frame counts that disagree are an error, never a warning. `shortest=1` hides a
-  mismatch behind a video that merely looks slightly wrong.
+- Version gleich halten in `skills/schnitt/SKILL.md` (Frontmatter), `.claude-plugin/plugin.json`
+  und `.claude-plugin/marketplace.json`.
+- Nie einen Schlüssel, eine `.env` oder ein gerendertes Video committen.
+- Renders loggen in eine Datei, nie in eine Pipe, die früh schließt.
+- Ein Projekt hat sein eigenes `public/`. Nie auf einen großen geteilten Ordner zeigen.
+- Abweichende Bildanzahl ist ein Fehler, keine Warnung.
+- Remotion bleibt auf 4.0.424 gepinnt, bis ein Update mit `npx tsc --noEmit` und einem Standbild geprüft ist.
+- Deutsch mit echten Umlauten in allem, was Nutzer lesen.

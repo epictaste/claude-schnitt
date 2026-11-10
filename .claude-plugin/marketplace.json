@@ -1,21 +1,22 @@
 {
   "name": "epictaste",
   "metadata": {
-    "description": "Let Claude edit your talking-head video. /cut builds a word-synced animation zone above your face, cuts hook versions, and renders finished MP4s."
+    "description": "Claude schneidet dein Video: /schnitt macht Rohschnitt, Stil, Storyboard, Grafiken, Untertitel, Sounds und Hook-Versionen."
   },
   "owner": {
-    "name": "Georg Kinzel"
+    "name": "epictaste"
   },
   "plugins": [
     {
-      "name": "cut",
-      "description": "Edit a talking-head video: animation zone above the speaker, frame-exact hook versions, finished MP4s.",
+      "name": "schnitt",
+      "description": "Claude schneidet dein Video in sechs Schritten, vom Rohschnitt bis zur Endkontrolle. Du wählst Look und Grafiken.",
+      "version": "2.0.0",
       "author": {
-        "name": "Georg Kinzel"
+        "name": "epictaste"
       },
       "source": "./",
       "category": "productivity",
-      "homepage": "https://github.com/epictaste/claude-cut"
+      "homepage": "https://github.com/epictaste/claude-schnitt"
     }
   ]
 }

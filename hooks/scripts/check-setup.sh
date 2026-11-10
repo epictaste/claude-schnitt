@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# SessionStart hook for /cut. One line when something is missing, silence when
-# everything is in place, so it never becomes noise.
+# SessionStart-Hook für /schnitt. Eine Zeile, wenn etwas fehlt, sonst still.
 set -euo pipefail
 
-CONFIG_FILE="$HOME/.config/cut/.env"
+CONFIG_FILE="$HOME/.config/schnitt/.env"
 FALLBACK_FILE="$HOME/.config/watch/.env"
+VENV_PY="$HOME/.config/schnitt/venv/bin/python"
 
 for file in "$CONFIG_FILE" "$FALLBACK_FILE"; do
   [[ -f "$file" ]] || continue
   perms=$(stat -c '%a' "$file" 2>/dev/null || stat -f '%Lp' "$file" 2>/dev/null || echo "")
   if [[ -n "$perms" && "$perms" != "600" && "$perms" != "400" ]]; then
-    echo "/cut: WARNING - $file has permissions $perms (should be 600). Fix: chmod 600 $file"
+    echo "/schnitt: WARNUNG, $file hat die Rechte $perms (sollte 600 sein). Beheben: chmod 600 $file"
   fi
 done
 
@@ -36,10 +36,13 @@ KEY="${DEEPGRAM_API_KEY:-}"
 [[ -n "$KEY" ]] || KEY="$(read_key DEEPGRAM_API_KEY "$CONFIG_FILE")"
 [[ -n "$KEY" ]] || KEY="$(read_key DEEPGRAM_API_KEY "$FALLBACK_FILE")"
 
+SETUP="python3 \${CLAUDE_PLUGIN_ROOT}/skills/schnitt/scripts/setup.py"
 if [[ -n "$MISSING" ]]; then
-  echo "/cut: needs$MISSING. Run: python3 \$CLAUDE_PLUGIN_ROOT/skills/cut/scripts/setup.py"
+  echo "/schnitt: es fehlt$MISSING. Ausführen: $SETUP"
+elif [[ ! -x "$VENV_PY" ]]; then
+  echo "/schnitt: Einrichtung noch nicht gelaufen. Ausführen: $SETUP"
 elif [[ -z "$KEY" ]]; then
-  echo "/cut: needs a Deepgram API key for word-level timestamps. Add DEEPGRAM_API_KEY to $CONFIG_FILE (console.deepgram.com)."
+  echo "/schnitt: Deepgram-Key fehlt (für die Wortzeiten). DEEPGRAM_API_KEY in $CONFIG_FILE eintragen (console.deepgram.com)."
 fi
 
 exit 0

@@ -1,19 +1,21 @@
-# Exclude non-runtime files from `git archive` output, which is what
-# /plugin install and the Agent Skills CLI fetch.
+# Was nicht zur Laufzeit gebraucht wird, bleibt aus `git archive` draußen.
+# Das Archiv ist das, was /plugin install und die Agent-Skills-CLI holen.
 
 __pycache__/   export-ignore
 node_modules/  export-ignore
 *.pyc          export-ignore
 .DS_Store      export-ignore
 
-tests/         export-ignore
-docs/          export-ignore
-assets/        export-ignore
-.agents/       export-ignore
-.github/       export-ignore
+# Mit führendem / greifen die Muster nur im Wurzelordner. Ohne / würde `assets/`
+# auch skills/schnitt/assets/ (LUTs, augen.swift) aus dem Paket werfen.
+/tests/        export-ignore
+/docs/         export-ignore
+/assets/       export-ignore
+/.agents/      export-ignore
+/.github/      export-ignore
 
 .gitignore     export-ignore
 .gitattributes export-ignore
 
-# NOTE: hooks/ and .claude-plugin/ are deliberately NOT export-ignored. Claude
-# Code's /plugin install fetches the full-repo archive and needs them.
+# hooks/ und .claude-plugin/ bleiben bewusst drin: /plugin install holt das
+# ganze Archiv und braucht beide.

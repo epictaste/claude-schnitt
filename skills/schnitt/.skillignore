@@ -1,0 +1,4 @@
+# Scanner, die im Skill-Ordner starten. Installierte Pakete und Render-Ausgaben der Vorlage gehören nicht zum Skill.
+template/node_modules/
+template/out/
+template/public/stilprobe/

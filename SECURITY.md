@@ -1,37 +1,36 @@
-# Security
+# Sicherheit
 
-`/cut` runs `ffmpeg`, `ffprobe`, and Remotion on your machine. Here is exactly
-what leaves it and what does not.
+`/schnitt` lässt ffmpeg, ffprobe, Python-Skripte und Remotion auf deinem Rechner laufen. Hier steht
+genau, was ihn verlässt und was nicht.
 
-## What goes out
+## Was rausgeht
 
-- **The audio track, to Deepgram.** To place scene changes on spoken words, the
-  skill extracts a mono 16 kHz mp3 and posts it to `api.deepgram.com/v1/listen`.
-  That is the only outbound call that carries your content.
-- **npm and a headless browser, on first render.** Remotion installs its
-  dependencies and a Chromium build the first time a project renders.
-- **The Inter font, from Google Fonts, at render time.** Remotion fetches it
-  when the zone is rendered.
+- **Die Tonspur, an Deepgram.** Für die Wortzeiten zieht der Skill eine Mono-Tonspur aus dem Video
+  und schickt sie an `api.deepgram.com/v1/listen`. Das ist die einzige Verbindung, die Inhalte von
+  dir trägt. Das gilt auch für Referenzvideos, wenn du für sie ein Transkript willst.
+- **npm und ein Headless-Browser beim ersten Projekt.** Remotion lädt seine Pakete und einen
+  Chromium beim ersten Rendern.
+- **Schriften von Google Fonts beim Rendern.** Remotion holt die Schriften aus `stil.json`.
+- **Homebrew beim Einrichten**, wenn ffmpeg oder Node fehlen und du der Installation zustimmst.
 
-## What stays local
+## Was lokal bleibt
 
-- **The video itself.** It is never uploaded. Cutting, measuring, compositing,
-  and the contact sheet all happen with local ffmpeg calls.
-- **The finished files.** They are written next to your video and nowhere else.
-- **Your API key.** It lives in `~/.config/cut/.env` (mode `0600`), or in
-  `~/.config/watch/.env` if you already use the `watch` skill. It is never
-  printed, logged, or written into an output file.
+- **Das Video selbst.** Es wird nie hochgeladen. Schneiden, Messen, Rendern und die Endkontrolle
+  laufen mit lokalen Programmen.
+- **Die fertigen Dateien.** Sie liegen im Projektordner `schnitt-<name>/` und sonst nirgends.
+- **Dein Schlüssel.** Er steht in `~/.config/schnitt/.env` (Rechte 0600) oder in
+  `~/.config/watch/.env`, wenn du den `watch`-Skill nutzt. Er wird nie ausgegeben, geloggt oder in
+  eine Ausgabedatei geschrieben.
 
-## Rules of thumb
+## Faustregeln
 
-- **Never commit `.env`.** It is already in `.gitignore`.
-- **Blur what should not be read.** The `Mosaic` block exists for full prompts,
-  keys, and private paths that appear in a screen recording. Use it.
-- **The skill sends nothing to anyone.** It does not post, upload, or message.
-  The last thing it does is print file paths.
+- **`.env` nie committen.** Sie steht in `.gitignore`.
+- **Verpixeln, was niemand lesen soll.** Der Baustein `Mosaik` ist für ganze Prompts, Schlüssel und
+  private Pfade in Bildschirmaufnahmen da.
+- **Der Skill verschickt nichts.** Er postet nicht, lädt nichts hoch, schreibt niemandem. Am Ende
+  stehen Dateipfade.
 
-## Reporting a vulnerability
+## Sicherheitslücke melden
 
-Please report security issues privately through
-[GitHub Security Advisories](https://github.com/epictaste/claude-cut/security/advisories/new)
-rather than in a public issue.
+Bitte privat melden, über
+[GitHub Security Advisories](https://github.com/epictaste/claude-schnitt/security/advisories/new). Ein öffentliches Issue würde die Lücke für alle sichtbar machen, bevor sie geschlossen ist.

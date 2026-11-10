@@ -1,13 +1,13 @@
 {
-  "name": "cut",
-  "version": "1.0.1",
-  "description": "Let Claude edit your talking-head video. Measures the free zone above the speaker, gets word-level timestamps from Deepgram, cuts frame-exact hook versions with ffmpeg, builds a word-synced animation zone with Remotion, and renders finished MP4s.",
+  "name": "schnitt",
+  "version": "2.0.0",
+  "description": "Claude schneidet dein Video in sechs Schritten: Rohschnitt mit den besten Takes, Stil aus Referenzvideos, Standbilder zum Abnicken, Storyboard mit Grafiken, die du auswählst, dann Licht, Zoom auf jedem Schnitt, Augen auf gleicher Höhe, wortgenaue Untertitel, Sounds, Hook-Versionen und Endkontrolle.",
   "author": {
     "name": "Georg Kinzel",
     "url": "https://georgkinzel.de"
   },
-  "homepage": "https://github.com/epictaste/claude-cut",
-  "repository": "https://github.com/epictaste/claude-cut",
+  "homepage": "https://github.com/epictaste/claude-schnitt",
+  "repository": "https://github.com/epictaste/claude-schnitt",
   "license": "MIT",
-  "keywords": ["video", "editing", "reel", "remotion", "ffmpeg", "deepgram", "animation", "captions", "shorts", "talking-head"]
+  "keywords": ["video", "schnitt", "rohschnitt", "reel", "remotion", "ffmpeg", "deepgram", "untertitel", "shorts", "deutsch"]
 }
